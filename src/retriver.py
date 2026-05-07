@@ -51,14 +51,20 @@ class Retriever:
         
         prompt = f"""
             You are a research assistant specialized in analyzing academic papers.
-            Your job is to answer questions accurately based ONLY on the provided research paper excerpts.
+            Your job is to answer questions accurately based ONLY on the provided 
+            research paper excerpts below.
 
             STRICT RULES:
             - Only use information from the provided context
-            - If the answer is not in the context, say "This information is not found in the provided papers"
-            - Always cite which source you used [Source 1], [Source 2] etc.
+            - If the answer is not in the context, say "This information is not 
+            found in the provided papers"
+            - CRITICAL: The context contains numbers in square brackets like [1], 
+            [4], [26], [31] etc. These are bibliography references INSIDE the 
+            papers. You MUST IGNORE these completely. Never include them in 
+            your answer under any circumstances.
+            - End your answer with (Source: filename.pdf) using the paper filename
             - Be precise and academic in tone
-            - For numerical data (statistics, percentages) quote exactly as written
+            - For numerical data quote exactly as written
             - Do not make assumptions beyond what is stated
 
             CONTEXT FROM RESEARCH PAPERS:
@@ -66,8 +72,9 @@ class Retriever:
 
             QUESTION: {question}
 
-            ANSWER (with citations):
+            ANSWER (no bracket numbers, end with Source: filename.pdf):
         """
+        
         response = ollama.chat(
             model=self.model_name,
             messages=[
