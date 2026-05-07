@@ -1,16 +1,26 @@
 import os
+import logging
 from pypdf import PdfReader
 
-class PDFLoader:
+logger = logging.getLogger(__name__)
 
+
+class PDFLoader:
     def load(self, file_path):
+        if not os.path.isdir(file_path):
+            raise FileNotFoundError(f"PDF directory not found: {file_path}")
+
         docs = []
         items = sorted(os.listdir(file_path))  # consistent ordering
 
         for item in items:
             if item.endswith(".pdf"):
                 full_path = os.path.join(file_path, item)
-                reader = PdfReader(full_path)
+                try:
+                    reader = PdfReader(full_path)
+                except Exception as exc:
+                    logger.warning("Failed to read PDF %s: %s", item, exc)
+                    continue
 
                 text = ""
                 for page in reader.pages:
@@ -19,7 +29,7 @@ class PDFLoader:
                         text += extracted
 
                 if not text.strip():
-                    print(f"Warning: No text extracted from {item}")
+                    logger.warning("No text extracted from %s", item)
                     continue
 
                 docs.append({
@@ -29,6 +39,8 @@ class PDFLoader:
                     "page_count": len(reader.pages),
                     "path": full_path
                 })
-                print(f"Loaded: {item} ({len(reader.pages)} pages)")
+                
+                logger.info("Loaded %s (%s pages)", item, len(reader.pages))
 
+                logger.info("Loaded %s PDF documents", len(docs))
         return docs

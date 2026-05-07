@@ -1,25 +1,25 @@
-from src.loader import PDFLoader
-from src.chunker import Chuncker
-from src.embedder import Embedder
-from src.retriver import Retriever
-from src.store import StoreVectorDB
+import logging
+from src.pipeline import RAGPipeline
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 if __name__ == "__main__":
-    # Load documents
-    loader = PDFLoader()
-    docs = loader.load("./pdfs")
+    rag = RAGPipeline(
+        docs_path="./pdfs",
+        embedding_model="nomic-embed-text",
+        chat_model="llama3.2:3b",
+        chunk_size=500,
+        overlap=50,
+        top_k=10,
+        chroma_path="./chroma_db",
+        collection_name="rag_docs",
+    )
+    rag.initialize()
 
-    # Chunk documents
-    chunker = Chuncker(chunk_size=500, overlap=50)
-    chunks = chunker.chunk_docs(docs)
-
-    # Create embedder and store
-    embedder = Embedder("nomic-embed-text")
-    store = StoreVectorDB(embedder, chunks)
-    
-    # Create retriever and query
-    retriever = Retriever("llama3.2:3b", embedder, store.collection, top_k=10)
     question = "How many people worldwide affected by  snakebite envenoming in each year?"
-    answer, docs_n = retriever.query(question)
-    print("Retrieved docs:", docs_n)
+    answer= rag.ask(question)
     print("Answer:", answer)

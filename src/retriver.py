@@ -1,16 +1,27 @@
 import ollama
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class RetrievalError(Exception):
+    pass
+
 
 class Retriever:
     def __init__(self, model_name, embedder, chrom_collection, top_k=20):
         self.model_name = model_name
         self.embedder = embedder
         self.chrom_collection = chrom_collection
-        self.top_k = top_k
+        self.top_k = max(1, int(top_k))
 
     def _query_chrom(self, question):
+        if not question or not question.strip():
+            raise ValueError("Question must be a non-empty string")
+
         # Convert the question into an embedding
         query_embedding = self.embedder.embed(question).reshape(1, -1)
-        print(f"Query embedding shape: {query_embedding.shape}")
+        logger.debug("Query embedding shape: %s", query_embedding.shape)
 
         # Search the ChromaDB collection for the top 20 closest documents
         results = self.chrom_collection.query(
@@ -18,12 +29,19 @@ class Retriever:
             n_results=self.top_k,
             include=["documents", "metadatas", "distances"]
         )
-        print("Distances:", results["distances"])
-        print("Indices:", results["ids"])
+        logger.debug("Distances: %s", results.get("distances"))
+        logger.debug("Indices: %s", results.get("ids"))
 
         # Retrieve the documents based on the indices returned by ChromaDB
-        retrieved_chunks = retrieved_chunks = results["documents"][0]
-        docs = results["metadatas"][0]
+        documents = results.get("documents") or []
+        metadatas = results.get("metadatas") or []
+
+        retrieved_chunks = documents[0] if documents else []
+        docs = metadatas[0] if metadatas else []
+
+        if not retrieved_chunks:
+            raise RetrievalError("No relevant context retrieved from vector store")
+
         return retrieved_chunks, docs
 
     def query(self, question):
@@ -51,9 +69,14 @@ class Retriever:
             ANSWER (with citations):
         """
         response = ollama.chat(
-        model=self.model_name,
-        messages=[
-            {"role": "user", "content": prompt}
+            model=self.model_name,
+            messages=[
+                {"role": "user", "content": prompt}
             ]
         )
-        return response["message"]["content"], docs
+
+        content = response.get("message", {}).get("content")
+        if not content:
+            raise RuntimeError("LLM response did not contain content")
+
+        return content

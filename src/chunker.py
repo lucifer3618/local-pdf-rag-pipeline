@@ -1,11 +1,19 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import logging
 
-class Chuncker:
+logger = logging.getLogger(__name__)
+
+
+class Chunker:
     def __init__(self, chunk_size=500, overlap=50):
         self.chunk_size = chunk_size
         self.overlap = overlap
 
     def chunk_docs(self, docs):
+        if not docs:
+            logger.warning("No documents provided for chunking")
+            return []
+
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.overlap
@@ -23,11 +31,15 @@ class Chuncker:
                     "path": doc["path"]
                 })
 
+        if not all_chunks:
+            logger.warning("Chunking produced no chunks")
+            return []
+
         chunk_lengths = [len(chunk["content"]) for chunk in all_chunks]
 
-        print(f"Min chunk size: {min(chunk_lengths)} chars")
-        print(f"Max chunk size: {max(chunk_lengths)} chars")
-        print(f"Avg chunk size: {sum(chunk_lengths)/len(chunk_lengths):.0f} chars")
-        print(f"Total chunks: {len(all_chunks)}")
+        logger.info("Min chunk size: %s chars", min(chunk_lengths))
+        logger.info("Max chunk size: %s chars", max(chunk_lengths))
+        logger.info("Avg chunk size: %.0f chars", sum(chunk_lengths) / len(chunk_lengths))
+        logger.info("Total chunks: %s", len(all_chunks))
 
         return all_chunks
